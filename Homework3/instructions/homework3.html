@@ -1,0 +1,114 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Homework 3</title>
+</head>
+
+<body>
+<h1>Homework 3: All-Pairs Shortest Path Pathfinding </h1>
+<p>One of the main uses of artificial intelligence in games is to perform <em>path planning</em>, the search for a sequence of movements through the virtual environment that gets an agent from one location to another without running into any obstacles. For now we will assume static obstacles. </p>
+<p>In an environment with static obstacles and a path network that is not too large, it is possible to pre-compute the shortest path from any source location to any destination location. When using navigation meshes, the question becomes: how do I get from one convex hull to another convex hull? Pre-computation trades speed for space: all possible paths are known and stored. This is great for real-time games such as 1st-person shooters.</p>
+<p><a href="http://en.wikipedia.org/wiki/Dijkstra's_algorithm">Djikstra's algorithm</a> is a single-source shortest path algorithm, meaning it takes a single source node and finds the shortest path to all other nodes. It can be run on all nodes to find the shortest path between all pairs of path nodes, but this is inefficient. The <a href="http://en.wikipedia.org/wiki/Floyd–Warshall_algorithm">Floyd-Warshall algorithm</a> is an all-pairs shortest path algorithm. In this assignment, we will implement the Floyd-Warshall algorithm to pre-compute paths that an agent will then use to intelligently and efficiently move about the game environment.</p>
+<p>In all-pairs shortest path (APSP) pathfinding, each path node knows where the agent needs to go next to get to a particular destination. For example, suppose you have four nodes, A, B,  C, and D with edges A-B, B-C, and C-D. Further suppose the agent wants to get to D but is physically at A. The agent asks A where to go next to get to D and node A replies &quot;go to B.&quot; This process repeats. When the agent gets to B, it asks B where to go next to get to D and node B replies &quot;go to C.&quot; And so on until the agent actually arrives at node D. Thus, the data structure that is pre-computed is a lookup table of entries that answer the question: &quot;if you want to get to X, where should I go next?&quot;. This is best expressed as a matrix in which the rows are possible destinations, the columns are possible current locations, and the values in the cells are the next node based on the combination of current position and desired destination.</p>
+<p>As this is the first time we can implement intelligent pathfinding behavior, we will have an agent play a game in which it must collect as many of the resources in the environment is as little time as possible. We will build off your previous navigation mesh and path network generation solution from <a href="homework2.html">homework 2</a>.</p>
+<p>There are many optional parts of this assignment that can be used to optimize your agent to collect resources faster. Optimizations will include smoothing the path that the agent takes as it moves through the environment, cutting corners. Optimizations can also involve more intelligently selecting the order in which resources are gathered.</p>
+<hr />
+
+<h2>What you need to know</h2>
+<p>Please consult <a href="homework1.html">homework 1</a> and <a href="homework2.html">homework 2</a> for background on the Game Engine. In addition to the information about the game engine provided there, the following are new elements you need to know about.</p>
+<h3>APSPNavigator</h3>
+<p>APSPNavigator is defined in apspnavigator.py. It is a specialization of NavMeshNavigator. APSPNavigator maintains two 2D arrays, <em>self.next</em>, and <em>self.dist</em>. self.next is the matrix indicating the next node to travel to if the agent is at some other node and wants to get to some other destination. Thus self.next[current][destination] is the next node in the path. self.dist is a matrix that holds the distance from any given node to any given destination. Thus self.dist[current][destination] gives the distance the agent has yet to travel.</p>
+<p>Member variables:</p>
+<ul>
+  <li>next: a 2D matrix indicating which node to traverse to next for any possible combination of current position and destination. Use next[current][destination] to get the value.</li>
+  <li>dist: a 2D matrix indicating the shortest distance from any node to any other node along the shortest path. Use dist[current][destination] to determine how far the agent must travel to get to a destination.</li>
+</ul>
+<p>Member functions:</p>
+<ul>
+  <li>createPathNetwork(world): creates the navigation mesh and creates the path network. Additionally, it calls the Floyd-Warshall algorithm to instantiate the next and dist matricies, which you must implement.</li>
+  <li>computePath(source, destination): creates a path from the source path node to the destination path node. A path is a list of points (point1, point2, ..., pointN) and a point is a tuple of the form (x, y). computePath() calls the helper function findPath(start, end, next), which returns a list of path nodes that should be traversed to get from the start path node to the end path node. The start path node is the closest path node to the agent's original position, and the end path node is the closest path node to the agent's desired position. You must implement findPath().</li>
+  <li>smooth(): optimizes the path to take shortcuts whenever possible and thereby create smoother, more efficient motion. This function calls the mySmooth() helper function, which you must implement.</li>
+</ul>
+<h3>Gatherer</h3>
+<p>Gatherer is defined in core.py. Gatherer is a sub-class of Agent that can be tasked with navigating to a set of target points. Given a set of target points, it iteratively moves to each target in the order given.</p>
+<p>Member variables:</p>
+<ul>
+  <li>targets: a list of points of the form (x, y)</li>
+  <li>score: an integer indicating the number of resources gathered</li>
+</ul>
+<p>Member functions:</p>
+<ul>
+  <li>setTargets(points): stores a list of points where a point is a tuple of the form (x, y).</li>
+  <li>addTarget(point): adds a point to the list of targets, where a point is a tuple of the form (x, y).</li>
+  <li>addToScore(amount): increment the score by the given amount.</li>
+  <li>doneMoving(): called whenever the agent has reached a target. This function selects the next point from the list of targets and starts the Agent moving again.</li>
+</ul>
+<h3>NearestGatherer</h3>
+<p>NearestGatherer is defined in nearestgatherer.py. NearestGatherer is a sub-class of Gatherer that sorts the targets it is instructed to travel to according to a closest-first strategy.</p>
+<h3>Resource</h3>
+<p>Resource is defined in core.py. A Resource is just a base class for things that can be collected by Agents.</p>
+<h3>SimpleResource</h3>
+<p>SimpleResource is defined in core.py. A SimpleResource is a type of resource that dissapears when touched by an Agent. You can see how this behavior is implemented in its collision() method.</p>
+<hr />
+<h2>Instructions</h2>
+<p>To complete this assignment, you must implement the Floyd-Warshall algorithm to pre-compute the shortest path between all pairs of path nodes. You must additionally use the computed <em>next </em>matrix to generate a path through the path network whenever the agent needs to move.</p>
+<p>Use your solution to <a href="homework2.html">homework 2</a> to generate a navigation mesh and a corresponding path network. The instructor can provide you with a default solution if necessary.</p>
+<p>To run the project code, use runapspnavigator.py:</p>
+<ul>
+  <strong>&gt; python runapspnavigator0.py<br />
+&gt; python runapspnavigator1.py<br />
+&gt; python runapspnavigator2.py<br />
+&gt; python runapspnavigator3.py<br />
+&gt; python runromania.py<br />
+  </strong>
+</ul>
+<p>The following steps are required to complete the assignment.</p>
+<p><strong>Step 1: </strong>Copy your myCreatePathNetwork.py file from homework 2.</p>
+<p><strong>Step 2: </strong>Implement APSP() in apspnavigator.py. Given a pathnetwork as a list of nodes and a list of edges, create and return the 2D <strong>next</strong> matrix and the 2D <strong>dist</strong> matrix.</p>
+<p>The APSP() function should create two 2D matrixes as dictionaries of dictionaries. The matrix <strong>next </strong>is the navigation table which indicates the next pathnode to go to if navigating from any source pathnode to any destination pathnode. Source nodes are rows and destination nodes are columns. Thus next[source][destination] will return a path node as a point. The matrix <strong>dist</strong> holds the shortest distance between two pathnodes along the path network. Thus dist[source][destination] will return a number. If a destination node is not reachable from a source node, then next[source][destination] = None and dist[source][destination] = INFINITY.</p>
+<p>APSP() sets up dist and next variables as dictionaries-of-dictionaries. Although pseudocode descriptions of ASPS will assume next and dist are 2D arrays, a dictionary-of-dictionaries in python is equivalent to a 2D array. Because we are using dictionaries, you don't have to worry about the length of the arrays, and you can index into the dictionary-of-dictionaries with an (x, y) point instead of a single integer index. For example, you can do the following:</p>
+<ul>point1 = (x1, y1)<br />point2 = (x2, y2)<br />dist[point1][point2] = distance(point1, point2)
+</ul>
+<p>Here is how computePath() works in APSPNavigator. It first checks if there is a clear shot from the Agent's current position to the given destination. If so the agent is instructed to move directly to the destination. Otherwise, the agent looks for the closest path nodes to itself and the destination and uses these path nodes to index into the next matrix. It uses the next matrix to compute the path as a set of path nodes. Once it has the path, it tries to optimize it. After all of that, if the path is not empty, the first node in the path is popped and the Agent is instructed to start moving to this node.</p>
+<p><strong>Step 3:</strong> Modify findPath() in apspnavigator.py. This function should return a path, as a list of points of the form (x, y).</p>
+<p>findPath() takes in three parameters. Start is the nearest path node to the original location of the agnet. End is the nearest path node to the desired destination point. Next is the navigation table.</p>
+<p>findPath() returns a list of path nodes (points). If there is no path, return the empty list. Use shallow copies of path nodes so that the path nodes in the path correspond back to path nodes in self.pathnodes.</p>
+<p><strong>Step 4: </strong>Modify clearShot() in apspnavigator.py</p>
+<p>This function should return true if the agent can move from point p1 to point p2 without running into any obstacles. APSPNavigator.computePath() uses this to avoid having to generate a path when two points are within line of sight of each other and the agent could walk straight from p1 to p2 without colliding with anything. clearShot() takes in two points, a list of lines from obstacles (not including world borders), a list of points from obstacles, and the agent. </p>
+<p><strong>Step 5 (optional): </strong>Optimize the path that the Agent takes when traversing the path.</p>
+<p>Modify shortcutPath() in mynavigatorhelpers.py. This function takes the path generated by APSP and attempts to shorten it by removing nodes that can be skipped by the agent. The function returns a path, which may or may not be the same as the path passed in. If there is a shortcut, meaning the agent does not need to visit all path nodes in the path, then the returned path should be shorter than the given path. shortcutPath() takes the folowing input parameters:</p>
+<ol>
+  <li> source: the original location of the agent (not necessarily a path node point)</li>
+  <li>destination: the desired point the agent wants to get to (not necessarily a path node point)</li>
+  <li>path: the path computed from findPath() that may not be optimal.</li>
+  <li>world: reference to the world object.</li>
+  <li>agent: reference to the agent object.</li>
+</ol>
+<p>Modify mySmooth() in mynavigatorhelpers.py. This function attempts to determine if shortcuts can be taken while the Agent is in motion. The Navigator object is passed in directly and it should modify the path by side-effect if necessary. The function returns true if the path has been dynamically modified, and false otherwise. mySmooth() works a little bit differently than other functions you've seen. The navigator object is passed in and you have access to all of its members. mySmooth may need to make an explicit call to Navigator.agent.moveToTarget() and may also need to directly modify Navigator.path. For example, if the agent can traverse directly to the destination despite having more nodes in the path, it may want to set the path to the empty list and instruct the agent to traverse directly to the destination point. As another example, if the agent can traverse directly to a path node that is not immediately next in the path, then it may choose to pop one or more nodes from the path.</p>
+<p>The key difference between shortcutPath() and mySmooth() is that shortcutPath() happens at the time the path is created (before the agent has started moving) and thus probably only considers whether path nodes can be skipped by looking at each path node individually. mySmooth() is called every tick and can thus account for new information about whether the destination or future path nodes are reachable while the agent is part-way between path nodes.</p>
+<hr />
+<h2>Grading</h2>
+<p>Your solution should be able to find the shortest path between any two points.</p>
+<ul>
+  <li>5 points: dist and next matricies are correct.</li>
+  <li>4 points: findPath returns the optimal path.</li>
+  <li>1 point: agent moves directly between two points when there is line of sight (clearShot implemented).</li>
+</ul>
+<p>The optional portion of the assignment will be evaluated as follows. The agent must collect all resources on the screen. If this is accomplished, the total distance traveled by the agent will be compared to the total distance necessary if no smoothing occurs (i.e., the distance traveled if agent always goes to the nearest path node to the starting point and the nearest path node to the destination point). The maximum extra credit score is 3 points. The number of points you will receive will be 3 * (&Delta; your agent's distance traveled) / (&Delta; best agent's distance traveled). The best agent is the one with the greatest delta between smoothing and non-smoothing distances traveled, selected among student solutions, TA solutions, and instructor solutions.</p>
+<hr />
+<h2>Hints</h2>
+<p>Make sure your dist[][] contains INFINITY values if two nodes are unreachable from each other.</p>
+<p>Path networks are bidirectional graphs. Make sure next[a][b] == next[b][a] and dist[a][b] == dist[b][a].</p>
+<p>Press the 'd' button to see how far the player-controlled agent has traveled.</p>
+<p>Read how computePath() works in APSPNavigator. If findPath() is not being called, it is likely there is something wrong with your APSP() implementation such as a None value in next where there should be a valid point, or an INFINITY value in dist where there should be a non-infinite value.</p>
+<p>Be sure to test your code with runromania.py, which uses a larger network but doesn't istantiate the graphical engine. The map is the <a href="romania.pdf">Romania</a> example from Rusell and Norvig's <em>Artificial Intelligence: A Modern Approach</em>, Third Edition (pp. 68)</p>
+<hr />
+<h2>Submission</h2>
+<p>To submit your solution, upload your modified apspnavigator.py and mycreatepathnetwork.py.</p>
+<p>To be considered for extra credit, upload mynavigatorhelpers.py. If you do not upload mynavigatorhelpers.py, you will still receive full credit for the non-optional parts of the assignment.</p>
+<p>You should not modify any other files in the game engine.</p>
+<p>DO NOT upload the entire game engine.</p>
+</body>
+
+</html>
